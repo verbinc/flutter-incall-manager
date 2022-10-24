@@ -22,7 +22,7 @@ class IncallManager {
   Future<void> start(
       {bool auto = true,
       MediaType media = MediaType.AUDIO,
-      required String ringback}) async {
+      String? ringback}) async {
     await _channel.invokeMethod('start', <String, dynamic>{
       'media': media == MediaType.AUDIO ? 'audio' : 'video',
       'auto': auto,
