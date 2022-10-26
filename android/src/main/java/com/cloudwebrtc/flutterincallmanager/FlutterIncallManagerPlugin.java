@@ -1,5 +1,10 @@
 package com.cloudwebrtc.flutterincallmanager;
 
+import io.flutter.embedding.android.FlutterView;
+import io.flutter.embedding.engine.FlutterEngine;
+import io.flutter.embedding.engine.plugins.FlutterPlugin;
+import io.flutter.embedding.engine.plugins.activity.ActivityAware;
+import io.flutter.embedding.engine.plugins.activity.ActivityPluginBinding;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
@@ -25,6 +30,7 @@ import android.os.Build;
 import android.os.Handler;
 import android.provider.Settings;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
@@ -53,12 +59,15 @@ import com.cloudwebrtc.flutterincallmanager.utils.ConstraintsMap;
 /**
  * FlutterIncallManagerPlugin
  */
-public class FlutterIncallManagerPlugin implements MethodCallHandler {
+public class FlutterIncallManagerPlugin implements MethodCallHandler, FlutterPlugin, ActivityAware {
 
     private static final String TAG = "InCallManager";
     private static SparseArray<String> mRequestPermissionCodeTargetPermission;
     private String mPackageName = "com.cloudwebrtc.incall";
 
+    private ActivityPluginBinding activityBinding;
+    private FlutterPluginBinding flutterPluginBinding;
+    private Context appContext;
     //Screen Manager
     private PowerManager mPowerManager;
     private WindowManager.LayoutParams lastLayoutParams;
@@ -106,6 +115,110 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
     private static final String SPEAKERPHONE_FALSE = "false";
 
     /**
+     * This {@code ActivityAware} {@link FlutterPlugin} is now
+     * associated with an {@link Activity}.
+     *
+     * <p>This method can be invoked in 1 of 2 situations:
+     *
+     * <ul>
+     *   <li>This {@code ActivityAware} {@link FlutterPlugin} was
+     *       just added to a {@link FlutterEngine} that was already
+     *       connected to a running {@link Activity}.
+     *   <li>This {@code ActivityAware} {@link FlutterPlugin} was
+     *       already added to a {@link FlutterEngine} and that {@link
+     *       FlutterEngine} was just connected to an {@link
+     *       Activity}.
+     * </ul>
+     * <p>
+     * The given {@link ActivityPluginBinding} contains {@link Activity}-related
+     * references that an {@code ActivityAware} {@link
+     * FlutterPlugin} may require, such as a reference to the
+     * actual {@link Activity} in question. The {@link ActivityPluginBinding} may be
+     * referenced until either {@link #onDetachedFromActivityForConfigChanges()} or {@link
+     * #onDetachedFromActivity()} is invoked. At the conclusion of either of those methods, the
+     * binding is no longer valid. Clear any references to the binding or its resources, and do not
+     * invoke any further methods on the binding or its resources.
+     *
+     * @param binding
+     */
+    @Override
+    public void onAttachedToActivity(@NonNull ActivityPluginBinding binding) {
+        activityBinding = binding;
+    }
+
+    /**
+     * The {@link Activity} that was attached and made available in {@link
+     * #onAttachedToActivity(ActivityPluginBinding)} has been detached from this {@code
+     * ActivityAware}'s {@link FlutterEngine} for the purpose of
+     * processing a configuration change.
+     *
+     * <p>By the end of this method, the {@link Activity} that was made available in
+     * {@link #onAttachedToActivity(ActivityPluginBinding)} is no longer valid. Any references to the
+     * associated {@link Activity} or {@link ActivityPluginBinding} should be cleared.
+     *
+     * <p>This method should be quickly followed by {@link
+     * #onReattachedToActivityForConfigChanges(ActivityPluginBinding)}, which signifies that a new
+     * {@link Activity} has been created with the new configuration options. That method
+     * provides a new {@link ActivityPluginBinding}, which references the newly created and associated
+     * {@link Activity}.
+     *
+     * <p>Any {@code Lifecycle} listeners that were registered in {@link
+     * #onAttachedToActivity(ActivityPluginBinding)} should be deregistered here to avoid a possible
+     * memory leak and other side effects.
+     */
+    @Override
+    public void onDetachedFromActivityForConfigChanges() {
+
+    }
+
+    /**
+     * This plugin and its {@link FlutterEngine} have been re-attached to
+     * an {@link Activity} after the {@link Activity} was recreated to handle
+     * configuration changes.
+     *
+     * <p>{@code binding} includes a reference to the new instance of the {@link
+     * Activity}. {@code binding} and its references may be cached and used from now until
+     * either {@link #onDetachedFromActivityForConfigChanges()} or {@link #onDetachedFromActivity()}
+     * is invoked. At the conclusion of either of those methods, the binding is no longer valid. Clear
+     * any references to the binding or its resources, and do not invoke any further methods on the
+     * binding or its resources.
+     *
+     * @param binding
+     */
+    @Override
+    public void onReattachedToActivityForConfigChanges(@NonNull ActivityPluginBinding binding) {
+        activityBinding = binding;
+    }
+
+    /**
+     * This plugin has been detached from an {@link Activity}.
+     *
+     * <p>Detachment can occur for a number of reasons.
+     *
+     * <ul>
+     *   <li>The app is no longer visible and the {@link Activity} instance has been
+     *       destroyed.
+     *   <li>The {@link FlutterEngine} that this plugin is connected to
+     *       has been detached from its {@link FlutterView}.
+     *   <li>This {@code ActivityAware} plugin has been removed from its {@link
+     *       FlutterEngine}.
+     * </ul>
+     * <p>
+     * By the end of this method, the {@link Activity} that was made available in {@link
+     * #onAttachedToActivity(ActivityPluginBinding)} is no longer valid. Any references to the
+     * associated {@link Activity} or {@link ActivityPluginBinding} should be cleared.
+     *
+     * <p>Any {@code Lifecycle} listeners that were registered in {@link
+     * #onAttachedToActivity(ActivityPluginBinding)} or {@link
+     * #onReattachedToActivityForConfigChanges(ActivityPluginBinding)} should be deregistered here to
+     * avoid a possible memory leak and other side effects.
+     */
+    @Override
+    public void onDetachedFromActivity() {
+
+    }
+
+    /**
      * AudioDevice is the names of possible audio devices that we currently
      * support.
      */
@@ -148,12 +261,12 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
     private final String useSpeakerphone = SPEAKERPHONE_AUTO;
 
     // Handles all tasks related to Bluetooth headset devices.
-    private final AppRTCBluetoothManager bluetoothManager;
+    private AppRTCBluetoothManager bluetoothManager;
 
     //ProximityManager
-    private final InCallProximityManager proximityManager;
+    private InCallProximityManager proximityManager;
 
-    private final InCallWakeLockUtils wakeLockUtils;
+    private InCallWakeLockUtils wakeLockUtils;
 
     // Contains a list of available audio devices. A Set collection is used to
     // avoid duplicate elements.
@@ -168,11 +281,10 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
         public void stopPlay();
     }
 
-    private final Registrar registrar;
-    private final MethodChannel channel;
-    private EventChannel.EventSink eventSink = null;
+    private MethodChannel channel;
+    public static EventChannel.EventSink eventSink = null;
 
-    private EventChannel.StreamHandler streamHandler = new EventChannel.StreamHandler() {
+    public static EventChannel.StreamHandler streamHandler = new EventChannel.StreamHandler() {
         @Override
         public void onListen(Object o, EventChannel.EventSink sink) {
             eventSink = sink;
@@ -184,32 +296,43 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
         }
     };
 
-    public Registrar registrar() {
-        return this.registrar;
-    }
 
     public Activity getActivity() {
-        return registrar.activity();
-    }
-
-    public Context getContext() {
-        return registrar.context();
+        return activityBinding.getActivity();
     }
 
     public static void registerWith(Registrar registrar) {
         final MethodChannel channel = new MethodChannel(registrar.messenger(), "FlutterInCallManager.Method");
-        channel.setMethodCallHandler(new FlutterIncallManagerPlugin(registrar, channel));
+        channel.setMethodCallHandler(new FlutterIncallManagerPlugin());
+        EventChannel eventChannel = new EventChannel(registrar.messenger(), "FlutterInCallManager.Event");
+        eventChannel.setStreamHandler(streamHandler);
     }
 
-    private FlutterIncallManagerPlugin(Registrar registrar, MethodChannel channel) {
-        this.registrar = registrar;
-        this.channel = channel;
-        mWindowManager = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
-        mPowerManager = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
-        mPackageName = getContext().getPackageName();
-        mWindowManager = (WindowManager) getContext().getSystemService(Context.WINDOW_SERVICE);
-        mPowerManager = (PowerManager) getContext().getSystemService(Context.POWER_SERVICE);
-        audioManager = ((AudioManager) getContext().getSystemService(Context.AUDIO_SERVICE));
+    /**
+     * This {@code FlutterPlugin} has been associated with a {@link
+     * FlutterEngine} instance.
+     *
+     * <p>Relevant resources that this {@code FlutterPlugin} may need are provided via the {@code
+     * binding}. The {@code binding} may be cached and referenced until {@link
+     * #onDetachedFromEngine(FlutterPluginBinding)} is invoked and returns.
+     *
+     * @param binding
+     */
+    @Override
+    public void onAttachedToEngine(@NonNull FlutterPluginBinding binding) {
+        flutterPluginBinding = binding;
+        appContext = flutterPluginBinding.getApplicationContext();
+        this.channel = new MethodChannel(binding.getBinaryMessenger(), "FlutterInCallManager.Method");
+        this.channel.setMethodCallHandler(this);
+        EventChannel eventChannel = new EventChannel(binding.getBinaryMessenger(), "FlutterInCallManager.Event");
+        eventChannel.setStreamHandler(streamHandler);
+
+        mWindowManager = (WindowManager) binding.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
+        mPowerManager = (PowerManager) binding.getApplicationContext().getSystemService(Context.POWER_SERVICE);
+        mPackageName = binding.getApplicationContext().getPackageName();
+        mWindowManager = (WindowManager) binding.getApplicationContext().getSystemService(Context.WINDOW_SERVICE);
+        mPowerManager = (PowerManager) binding.getApplicationContext().getSystemService(Context.POWER_SERVICE);
+        audioManager = ((AudioManager) binding.getApplicationContext().getSystemService(Context.AUDIO_SERVICE));
         audioUriMap = new HashMap<String, Uri>();
         audioUriMap.put("defaultRingtoneUri", defaultRingtoneUri);
         audioUriMap.put("defaultRingbackUri", defaultRingbackUri);
@@ -219,12 +342,32 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
         audioUriMap.put("bundleBusytoneUri", bundleBusytoneUri);
         mRequestPermissionCodeTargetPermission = new SparseArray<String>();
         mOnFocusChangeListener = new OnFocusChangeListener();
-        bluetoothManager = AppRTCBluetoothManager.create(getContext(), this);
-        proximityManager = InCallProximityManager.create(getContext(), this);
-        wakeLockUtils = new InCallWakeLockUtils(getContext());
-        EventChannel eventChannel = new EventChannel(registrar.messenger(), "FlutterInCallManager.Event");
-        eventChannel.setStreamHandler(streamHandler);
+        bluetoothManager = AppRTCBluetoothManager.create(binding.getApplicationContext(), this);
+        proximityManager = InCallProximityManager.create(binding.getApplicationContext(), this);
+        wakeLockUtils = new InCallWakeLockUtils(binding.getApplicationContext());
         Log.d(TAG, "InCallManager initialized");
+    }
+
+    /**
+     * This {@code FlutterPlugin} has been removed from a {@link
+     * FlutterEngine} instance.
+     *
+     * <p>The {@code binding} passed to this method is the same instance that was passed in {@link
+     * #onAttachedToEngine(FlutterPluginBinding)}. It is provided again in this method as a
+     * convenience. The {@code binding} may be referenced during the execution of this method, but it
+     * must not be cached or referenced after this method returns.
+     *
+     * <p>{@code FlutterPlugin}s should release all resources in this method.
+     *
+     * @param binding
+     */
+    @Override
+    public void onDetachedFromEngine(@NonNull FlutterPluginBinding binding) {
+
+    }
+    public FlutterIncallManagerPlugin() {
+
+
     }
 
 
@@ -357,7 +500,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
                     }
                 }
             };
-            Context reactContext = getContext();
+            Context reactContext = appContext;
             if (reactContext != null) {
                 reactContext.registerReceiver(wiredHeadsetReceiver, filter);
             } else {
@@ -394,7 +537,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
                     }
                 }
             };
-            Context reactContext = getContext();
+            Context reactContext = appContext;
             if (reactContext != null) {
                 reactContext.registerReceiver(noisyAudioReceiver, filter);
             } else {
@@ -464,7 +607,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
                     }
                 }
             };
-            Context reactContext = getContext();
+            Context reactContext = appContext;
             if (reactContext != null) {
                 reactContext.registerReceiver(mediaButtonReceiver, filter);
             } else {
@@ -1191,7 +1334,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
         if (type.equals("_BUNDLE_")) {
             if (audioUriMap.get(uriBundle) == null) {
                 int res = 0;
-                Context reactContext = getContext();
+                Context reactContext = appContext;
                 if (reactContext != null) {
                     res = reactContext.getResources().getIdentifier(fileBundle, "raw", mPackageName);
                 } else {
@@ -1412,7 +1555,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
                 int stream = (Integer) data.get("audioStream");
                 String name = (String) data.get("name");
 
-                Context reactContext = getContext();
+                Context reactContext = appContext;
                 setDataSource(reactContext, sourceUri);
                 setLooping(setLooping);
                 setAudioStreamType(stream); // is better using STREAM_DTMF for ToneGenerator?
@@ -1490,7 +1633,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
 
     private String _checkPermission(String targetPermission) {
         try {
-            Context reactContext = getContext();
+            Context reactContext = appContext;
             if (ContextCompat.checkSelfPermission(reactContext, targetPermission) == PackageManager.PERMISSION_GRANTED) {
                 return "granted";
             } else {
@@ -1702,14 +1845,14 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
      * Helper method for receiver registration.
      */
     private void registerReceiver(BroadcastReceiver receiver, IntentFilter filter) {
-        getContext().registerReceiver(receiver, filter);
+        appContext.registerReceiver(receiver, filter);
     }
 
     /**
      * Helper method for unregistration of an existing receiver.
      */
     private void unregisterReceiver(final BroadcastReceiver receiver) {
-        final Context reactContext = this.getContext();
+        final Context reactContext = this.appContext;
         if (reactContext != null) {
             try {
                 reactContext.unregisterReceiver(receiver);
@@ -1747,7 +1890,7 @@ public class FlutterIncallManagerPlugin implements MethodCallHandler {
      * Gets the current earpiece state.
      */
     private boolean hasEarpiece() {
-        return getContext().getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY);
+        return appContext.getPackageManager().hasSystemFeature(PackageManager.FEATURE_TELEPHONY);
     }
 
     /**
