@@ -84,7 +84,7 @@ public class PermissionUtils {
         for (int i = 0; i < size; ++i) {
             int grantResult
                 = ContextCompat.checkSelfPermission(
-                    plugin.getContext(),
+                    plugin.getActivity().getApplicationContext(),
                     permissions[i]);
 
             grantResults[i] = grantResult;

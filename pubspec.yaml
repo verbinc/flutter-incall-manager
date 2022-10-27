@@ -15,6 +15,9 @@ flutter:
         pluginClass: FlutterIncallManagerPlugin
       ios:
         pluginClass: FlutterIncallManagerPlugin
+      web:
+        pluginClass: FlutterIncallManagerWebPlugin
+        fileName: flutter_incall_manager_web.dart
 
 environment:
   sdk: ">=2.12.0 <3.0.0"
